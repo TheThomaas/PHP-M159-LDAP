@@ -41,7 +41,7 @@
         $bind = @ldap_bind($connection, $ldaprdn, $credentials['password']);
 
         if ($bind) {
-            $filter="(sAMAccountName=$name)";
+            $filter="(cn=$name)";
             $result = @ldap_search($connection,"DC=M159-Domain,DC=local",$filter);
             @ldap_sort($connection,$result,"sn");
             $info = @ldap_get_entries($connection, $result);
@@ -84,46 +84,76 @@
         $r = @ldap_bind($connection, $credentials['username'].$loginDomain, $credentials['password']);
 
         // Prépare les données
-        $info["cn"] = "$username";
+        $info["cn"] = "$name $lastname";
         $info['givenname'] = "$name";
         $info["sn"] = "$lastname";
         $info["sAMAccountName"] = "$username";
         $info['displayname'] = "$name $lastname";
-        $info['initials'] = strtoupper($name[0]).strtoupper($lastname[0]);
-        $info['userpassword'] = "$password";
+        // $info['initials'] = strtoupper($name[0]).strtoupper($lastname[0]);
         $info["userprincipalname"] = "$username$loginDomain";
-        $info["mail"] = "$username@m159.ch";
-        $info["UserAccountControl"] = "544";
+        // $info["mail"] = "$username@m159.ch";
+        $info["UserAccountControl"] = "512"; // 544
         $info["objectclass"] = "user";
+        // $info["pwdlastset"] = -1;
+        $info['userpassword'] = "$password";
+
+        // $newPassword = '"'.$password.'"';
+        // $newPass = iconv('UTF-8', 'UTF-16LE', $newPassword);
+        // // $info["unicodepwd"] = $newPass;
+        // $info["userpassword"] = $newPass;
 
         // Ajoute les données au dossier
-        if (!alreadyExists($connection, $info["sAMAccountName"])) {
-            @ldap_add($connection, "cn=".$info["cn"].",ou=utilisateurs,DC=M159-Domain,DC=local", $info);
-            echo "<br>Utilisateur ajouté<br>";
+        if (!alreadyExists($connection, $info["cn"])) {
+            // ldap_add($connection, "cn=".$info["cn"].",cn=Users,DC=M159-Domain,DC=local", $info);
+            ldap_add($connection, "cn=".$info["cn"].",ou=utilisateurs,DC=M159-Domain,DC=local", $info);
+            echo "Utilisateur ajouté : $password";
+            // header('Location: index.php');
         } else {
-            echo "<br>Impossible de créer l'utilisateur<br>";
+            echo "Cet utilisateur existe déjà, connectez-vous";
         }
 
+        echo "<br><br>";
         @ldap_close($connection);
         
     }
     
-    $isUserAuthenticated = FALSE;
-
     /**
      * Connecte l'utilisateur passé en paramètre
      * @param connection : connection vers le LDAP
      * @param username : Nom d'utilisateur ou mail
+     * @param password : Mot de passe de l'utilisateur
      */
     function connectUser($connection, $username, $password) {
-        $loginDomain = "@M159-Domain.local";
+        $ldap_username = convertUsernameToLogin($username);
+        $ldap_password = $password;
+        // $ldap_password = "";
         
-        $ldap_dn = "cn=".$_POST["username"].",ou=utilisateurs,DC=M159-Domain,DC=local";
-        $ldap_username = $_POST["username"].$loginDomain;
-        $ldap_password = $_POST["password"];
-        
-        if (!@ldap_bind($ldapConnection, $ldap_dn, $ldap_password)) {
-            echo "Invalid Credential<br><br>";
+        if (@ldap_bind($connection, $ldap_username, $ldap_password)) {
+            echo "Connecté";
+            header('Location: index.php');
         } else
-            echo "Credentials OK";
+            echo "Impossible de se connecter";
+
+        echo "<br><br>";
+        @ldap_close($connection);
+    }
+
+    /**
+     * Converti un nom d'utilisateur en login
+     * @param username : Nom d'utilisateur à convertir
+     */
+    function convertUsernameToLogin($username) {
+
+        // Vérifie le type du nom d'utilisateur
+        $usernameType = "username";
+        if (strpos($username, "@") !== false)
+            $usernameType = "mail";
+
+        $loginDomain = "@M159-Domain.local";
+
+        // Rajoute le domaine de connexion au nom d'utilisateur
+        if ($usernameType !== "mail")
+            $username = $username.$loginDomain;
+
+        return $username;
     }
