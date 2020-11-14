@@ -127,16 +127,15 @@ button.createUser:hover {
   background: #4b111b;
 }
 
-a.login {
+a.login, a.createAccount {
     background: transparent;
     color: #a4243b;
     padding: 12px 0 0 0;
     font-size: 1rem;
-    cursor: pointer;
-    display:block;
+    display: block;
     text-align:center
-  }
+}
   
-  a.login:hover {
-    color: #4b111b;
-  }
+a.login:hover, a.createAccount:hover {
+  color: #4b111b;
+}
