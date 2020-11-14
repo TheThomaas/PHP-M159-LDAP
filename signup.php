@@ -13,14 +13,9 @@
 <body>
 	<div class="signup">
 		<form action="" method="post" autocomplete="off">
-			<h1>Créer un compte</h1>
-			<?php
-				if(array_key_exists('createUser', $_POST)){
-					$ldapConnection = setupConnection();
-					addUser($ldapConnection, $_POST['name'], $_POST['lastname'], $_POST['username'], $_POST['password']);	
-				}
-			?>
-			<br><div class="signup__field">
+			<h1>Créer un compte</h1><br>
+			
+			<div class="signup__field">
 				<input class="signup__input" type="text" name="name" id="name" required />
 				<label class="signup__label" for="name">Prénom</label>
 			</div>
@@ -39,7 +34,12 @@
 				<input class="signup__input" type="password" name="password" id="password" required />
 				<label class="signup__label" for="password">Mot de passe</label>
 			</div>
-
+			<?php
+				if(array_key_exists('createUser', $_POST)){
+					$ldapConnection = setupConnection();
+					addUser($ldapConnection, $_POST['name'], $_POST['lastname'], $_POST['username'], $_POST['password']);	
+				}
+			?>
 			<button class="createUser" type="submit" name="createUser" id="createUser" value="Créer un compte">Créer un compte</button>
 		</form>
 
