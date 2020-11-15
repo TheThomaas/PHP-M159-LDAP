@@ -15,6 +15,7 @@
      * @return ldap : Si la connexion a été établie
      */
     function setupConnection() {
+        // $adServer = "ldaps://localhost:636";
         $adServer = "ldap://localhost";
 
         $ldap = ldap_connect($adServer);
@@ -33,21 +34,21 @@
      * @param connection : Connexion vers l'AD
      * @param name : Utilisateur recherché
      */
-    function search($connection, $name) {
+    function search($connection, $username) {
         $credentials = getLoginCredentials();
 
         $ldaprdn = $credentials['username'] . '@M159-Domain.local';
 
         $bind = @ldap_bind($connection, $ldaprdn, $credentials['password']);
-
+        
         if ($bind) {
-            $filter="(cn=$name)";
+            $filter="(cn=$username)";
             $result = @ldap_search($connection,"DC=M159-Domain,DC=local",$filter);
             @ldap_sort($connection,$result,"sn");
             $info = @ldap_get_entries($connection, $result);
             return $info;
         } else {
-            $msg = "Invalid lastname address / password";
+            $msg = "Impossible de trouver cet utilisateur";
             echo $msg;
         }
     }
@@ -73,6 +74,7 @@
      * @param connection : connection vers le LDAP
      * @param name : Prénom de l'utilisateur à créer
      * @param lastname : Nom de l'utilisateur à créer
+     * @param username : Nom d'utilisateur de l'utilisateur à créer
      * @param password : Mot de passe de l'utilisateur à créer
      */
     function addUser($connection, $name, $lastname, $username, $password){
@@ -84,30 +86,23 @@
         $r = @ldap_bind($connection, $credentials['username'].$loginDomain, $credentials['password']);
 
         // Prépare les données
-        $info["cn"] = "$name $lastname";
-        $info['givenname'] = "$name";
+        $info["cn"] = "$username";
+        $info["givenname"] = "$name";
         $info["sn"] = "$lastname";
         $info["sAMAccountName"] = "$username";
-        $info['displayname'] = "$name $lastname";
-        // $info['initials'] = strtoupper($name[0]).strtoupper($lastname[0]);
+        $info["displayname"] = "$name $lastname";
         $info["userprincipalname"] = "$username$loginDomain";
-        // $info["mail"] = "$username@m159.ch";
-        $info["UserAccountControl"] = "512"; // 544
+        $info["UserAccountControl"] = "544";
         $info["objectclass"] = "user";
-        // $info["pwdlastset"] = -1;
-        $info['userpassword'] = "$password";
-
-        // $newPassword = '"'.$password.'"';
-        // $newPass = iconv('UTF-8', 'UTF-16LE', $newPassword);
-        // // $info["unicodepwd"] = $newPass;
-        // $info["userpassword"] = $newPass;
+        $info["userpassword"] = "$password";
 
         // Ajoute les données au dossier
         if (!alreadyExists($connection, $info["cn"])) {
-            // ldap_add($connection, "cn=".$info["cn"].",cn=Users,DC=M159-Domain,DC=local", $info);
-            ldap_add($connection, "cn=".$info["cn"].",ou=utilisateurs,DC=M159-Domain,DC=local", $info);
-            echo "Utilisateur ajouté : $password";
-            // header('Location: index.php');
+            if(@ldap_add($connection, "cn=".$info["cn"].",ou=utilisateurs,DC=M159-Domain,DC=local", $info)) {
+                echo "Utilisateur ajouté";
+            } else {
+                echo "Imposible de créer l'utilisateur";
+            }
         } else {
             echo "Cet utilisateur existe déjà, connectez-vous";
         }
@@ -125,12 +120,19 @@
      */
     function connectUser($connection, $username, $password) {
         $ldap_username = convertUsernameToLogin($username);
-        $ldap_password = $password;
-        // $ldap_password = "";
+        // $ldap_password = $password;
+        $ldap_password = "";
         
         if (@ldap_bind($connection, $ldap_username, $ldap_password)) {
-            echo "Connecté";
-            header('Location: index.php');
+            // // Mot de passe correct, on ouvre une nouvelle session
+            // session_start();
+                            
+            // Enregistre les données dans la variable de session
+            $_SESSION["loggedin"] = true;
+            $_SESSION["username"] = $ldap_username;                            
+            
+            header('Location: account.php');
+            exit;
         } else
             echo "Impossible de se connecter";
 
@@ -156,4 +158,92 @@
             $username = $username.$loginDomain;
 
         return $username;
+    }
+
+    /**
+     * Déconnecte l'utilisateur actuel
+     */
+    function logout() {
+        // Initialise la session
+        session_start();
+        
+        // Vide la variable de session
+        $_SESSION = array();
+        
+        // Détruit la session
+        session_destroy();
+        
+        // Redirige à la page de connexion
+        header("location: login.php");
+        exit;
+    }
+
+    /**
+     * Affiche les informations d'un utilisateur
+     * @param connection : connection vers le LDAP
+     * @param username : Nom d'utilisateur de l'utilisateur à afficher
+     */
+    function showUserInfo($connection, $username) {
+        $credentials = getLoginCredentials();
+        if (TRUE !== ldap_bind($connection, $credentials['username'] . '@M159-Domain.local', $credentials['password'])){
+            die('<p>Failed to bind to LDAP server.</p>');
+        }
+
+        $ldap_base_dn = "ou=utilisateurs,DC=M159-Domain,DC=local";
+        $search_filter = "(&(objectCategory=user))";
+        $result = ldap_search($connection, $ldap_base_dn, $search_filter);
+        if (FALSE !== $result){
+            $entries = ldap_get_entries($connection, $result);
+            if ($entries['count'] > 0){
+                $odd = 0;
+                foreach ($entries[0] AS $key => $value){
+                    if (0 === $odd%2){
+                        $ldap_columns[] = $key;
+                    }
+                    $odd++;
+                }
+                echo '<table style="width:100%;">';
+                for ($i = 0; $i < $entries['count']; $i++){
+                    foreach ($ldap_columns AS $col_name){
+                        if ($entries[$i]["cn"][0]."@M159-Domain.local" === "$username") {
+                            if ('givenname' === $col_name ||
+                                'sn' === $col_name ||
+                                'samaccountname' === $col_name ||
+                                'displayname' === $col_name ||
+                                'userprincipalname' === $col_name) {
+
+                                $displayColName = NULL;
+                                switch ($col_name){
+                                    case 'givenname':
+                                        $displayColName = "Prénom";
+                                        break;
+                                    case 'sn':
+                                        $displayColName = "Nom  de famille";
+                                        break;
+                                    case 'samaccountname':
+                                        $displayColName = "Nom d'utilisateur";
+                                        break;
+                                    case 'displayname':
+                                        $displayColName = "Nom complet";
+                                        break;
+                                    case 'userprincipalname':
+                                        $displayColName = "Identifiant Windows";
+                                        break;
+                                }
+                                echo "<tr>
+                                <th>$displayColName</th>
+                                <td>";
+                                if (isset($entries[$i][$col_name])){
+                                    $output = $entries[$i][$col_name][0];
+                                    
+                                    echo $output .'</td>';
+                                }
+                                echo '</tr>';
+                            }
+                        }
+                    }
+                }
+                echo '</table>';
+            }
+        }
     }
