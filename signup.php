@@ -7,13 +7,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<title>M159 - LDAP</title>
+	<title>Inscription - M159 - LDAP</title>
 	<link rel="stylesheet" type="text/css" href="style.css">
 </head>
 <body>
 	<div class="signup">
 		<form action="" method="post" autocomplete="off">
-			<h1>Créer un compte</h1><br>
+			<h1>Créer un compte</h1><br><br>
 			
 			<div class="signup__field">
 				<input class="signup__input" type="text" name="name" id="name" required />
