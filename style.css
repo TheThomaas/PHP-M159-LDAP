@@ -31,7 +31,7 @@ input {
 .signup {
   background-color: white;
   width: 100%;
-  max-width: 500px;
+  max-width: 550px;
   padding: 50px 70px 35px 70px;
   display: flex;
   flex-direction: column;
@@ -138,4 +138,8 @@ a.login, a.createAccount {
   
 a.login:hover, a.createAccount:hover {
   color: #4b111b;
+}
+
+tr {
+  padding: 10px;
 }
