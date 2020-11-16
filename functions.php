@@ -12,7 +12,7 @@
         
     /**
      * Se connecte au serveur LDAP
-     * @return ldap : Si la connexion a été établie
+     * @return ldap : La connexion si elle a été établie
      */
     function setupConnection() {
         // $adServer = "ldaps://localhost:636";
@@ -25,7 +25,7 @@
         if ($ldap) {
             return $ldap;
         } else {
-            echo "Impossible de se connecter au serveur LDAP";
+            echo "Impossible de se connecter au serveur LDAP.";
         }			
     }
 
@@ -48,7 +48,7 @@
             $info = @ldap_get_entries($connection, $result);
             return $info;
         } else {
-            $msg = "Impossible de trouver cet utilisateur";
+            $msg = "Impossible de trouver cet utilisateur.";
             echo $msg;
         }
     }
@@ -71,7 +71,7 @@
 
     /**
      * Ajoute un utilisateur dans l'AD
-     * @param connection : connection vers le LDAP
+     * @param connection : Connexion vers le LDAP
      * @param name : Prénom de l'utilisateur à créer
      * @param lastname : Nom de l'utilisateur à créer
      * @param username : Nom d'utilisateur de l'utilisateur à créer
@@ -83,7 +83,7 @@
         $credentials = getLoginCredentials();
 
         // Connexion avec une identité qui permet les modifications
-        $r = @ldap_bind($connection, $credentials['username'].$loginDomain, $credentials['password']);
+        $bind = @ldap_bind($connection, $credentials['username'].$loginDomain, $credentials['password']);
 
         // Prépare les données
         $info["cn"] = "$username";
@@ -99,12 +99,12 @@
         // Ajoute les données au dossier
         if (!alreadyExists($connection, $info["cn"])) {
             if(@ldap_add($connection, "cn=".$info["cn"].",ou=utilisateurs,DC=M159-Domain,DC=local", $info)) {
-                echo "Utilisateur ajouté";
+                echo "Utilisateur ajouté.";
             } else {
-                echo "Imposible de créer l'utilisateur";
+                echo "Imposible de créer l'utilisateur.";
             }
         } else {
-            echo "Cet utilisateur existe déjà, connectez-vous";
+            echo "Cet utilisateur existe déjà, connectez-vous.";
         }
 
         echo "<br><br>";
@@ -114,30 +114,32 @@
     
     /**
      * Connecte l'utilisateur passé en paramètre
-     * @param connection : connection vers le LDAP
+     * @param connection : Connexion vers le LDAP
      * @param username : Nom d'utilisateur ou mail
      * @param password : Mot de passe de l'utilisateur
      */
     function connectUser($connection, $username, $password) {
         $ldap_username = convertUsernameToLogin($username);
-        // $ldap_password = $password;
-        $ldap_password = "";
-        
-        if (@ldap_bind($connection, $ldap_username, $ldap_password)) {
-            // // Mot de passe correct, on ouvre une nouvelle session
-            // session_start();
-                            
-            // Enregistre les données dans la variable de session
-            $_SESSION["loggedin"] = true;
-            $_SESSION["username"] = $ldap_username;                            
-            
-            header('Location: account.php');
-            exit;
-        } else
-            echo "Impossible de se connecter";
+        $ldap_password = $password;
+        // $ldap_password = "";
+
+        if (alreadyExists($connection, $username)) {
+            if (@ldap_bind($connection, $ldap_username, $ldap_password)) {                                
+                // Enregistre les données dans la variable de session
+                $_SESSION["loggedin"] = true;
+                $_SESSION["username"] = $ldap_username;                            
+                
+                header('Location: account.php');
+                exit;
+            } else
+                echo "Impossible de se connecter.";
+
+            @ldap_close($connection);
+        } else {
+            echo "Cet utilisateur n'existe pas.";
+        }
 
         echo "<br><br>";
-        @ldap_close($connection);
     }
 
     /**
@@ -174,26 +176,26 @@
         session_destroy();
         
         // Redirige à la page de connexion
-        header("location: login.php");
+        header("location: index.php");
         exit;
     }
 
     /**
      * Affiche les informations d'un utilisateur
-     * @param connection : connection vers le LDAP
+     * @param connection : Connexion vers le LDAP
      * @param username : Nom d'utilisateur de l'utilisateur à afficher
      */
     function showUserInfo($connection, $username) {
         $credentials = getLoginCredentials();
-        if (TRUE !== ldap_bind($connection, $credentials['username'] . '@M159-Domain.local', $credentials['password'])){
-            die('<p>Failed to bind to LDAP server.</p>');
+        if (TRUE !== @ldap_bind($connection, $credentials['username'] . '@M159-Domain.local', $credentials['password'])){
+            die('Impossible de se connecter au serveur LDAP.');
         }
 
         $ldap_base_dn = "ou=utilisateurs,DC=M159-Domain,DC=local";
         $search_filter = "(&(objectCategory=user))";
-        $result = ldap_search($connection, $ldap_base_dn, $search_filter);
+        $result = @ldap_search($connection, $ldap_base_dn, $search_filter);
         if (FALSE !== $result){
-            $entries = ldap_get_entries($connection, $result);
+            $entries = @ldap_get_entries($connection, $result);
             if ($entries['count'] > 0){
                 $odd = 0;
                 foreach ($entries[0] AS $key => $value){
