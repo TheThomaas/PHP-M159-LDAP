@@ -2,7 +2,7 @@
 
 Projet permettant d'éditer les utilisateurs d'un annuaire LDAP, pour le module 159
 
-![Fonctionnement normal du projet](img/login.gif)
+![Fonctionnement normal du projet](img/login.gif "Fonctionnement normal du projet")
 
 ## Prérequis
 * XAMPP
@@ -20,13 +20,13 @@ Projet permettant d'éditer les utilisateurs d'un annuaire LDAP, pour le module 
 ## Fonctionnalités
 * Création d'utilisateurs Active Directory
 
-![Tentative de création d'un utilisateur existant](img/utilisateur-already-exists.gif)
+![Tentative de création d'un utilisateur existant](img/utilisateur-already-exists.gif "Tentative de création d'un utilisateur existant")
 
 * Connexion avec les utilisateurs crées
 
-![Tentative de connexion avec un utilisateur inexistant](img/user-doesnt-exists.gif)
+![Tentative de connexion avec un utilisateur inexistant](img/user-doesnt-exists.gif "Tentative de connexion avec un utilisateur inexistant")
 
 * Affichage des informations de l'utilisateur
 * Déconnexion
 
-![Déconnexion](img/logout.gif)
+![Déconnexion](img/logout.gif "Déconnexion")
